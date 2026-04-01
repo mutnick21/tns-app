@@ -13,10 +13,7 @@ import matplotlib
 matplotlib.use("Agg")          # Backend non-interactif (pas de GUI)
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-<<<<<<< HEAD
-=======
 from pydub import AudioSegment
->>>>>>> aissata/master
 
 
 # ── Palette visuelle du projet ───────────────────────────────────────────────
@@ -280,8 +277,6 @@ def export_filtered_wav(signal_filtered: np.ndarray, sample_rate: int,
     pcm = (signal_filtered * 32767).astype(np.int16)
     wavfile.write(output_path, sample_rate, pcm)
     return output_path
-<<<<<<< HEAD
-=======
 
 # app/fft_processing.py
 
@@ -324,4 +319,3 @@ def convert_to_wav(filepath, output_dir):
     audio.export(chemin_sortie, format='wav')
 
     return chemin_sortie
->>>>>>> aissata/master
