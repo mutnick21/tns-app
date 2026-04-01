@@ -13,6 +13,10 @@ import matplotlib
 matplotlib.use("Agg")          # Backend non-interactif (pas de GUI)
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+<<<<<<< HEAD
+=======
+from pydub import AudioSegment
+>>>>>>> aissata/master
 
 
 # ── Palette visuelle du projet ───────────────────────────────────────────────
@@ -276,3 +280,48 @@ def export_filtered_wav(signal_filtered: np.ndarray, sample_rate: int,
     pcm = (signal_filtered * 32767).astype(np.int16)
     wavfile.write(output_path, sample_rate, pcm)
     return output_path
+<<<<<<< HEAD
+=======
+
+# app/fft_processing.py
+
+
+
+def convert_to_wav(filepath, output_dir):
+    """
+    Convertit un fichier audio en format WAV si nécessaire.
+    
+    Paramètres :
+        filepath   : str – chemin du fichier audio source (WAV, MP3, OGG, etc.)
+        output_dir : str – dossier où sauvegarder le fichier WAV converti
+    
+    Retourne :
+        str – chemin du fichier WAV (converti ou original)
+    """
+    # Récupère l'extension du fichier en minuscules (.mp3, .wav, etc.)
+    extension = os.path.splitext(filepath)[1].lower()
+
+    # Si c'est déjà un WAV, pas besoin de convertir
+    if extension == '.wav':
+        return filepath
+
+    # Construit le nom du fichier de sortie en remplaçant l'extension par .wav
+    nom_fichier = os.path.splitext(os.path.basename(filepath))[0]
+    chemin_sortie = os.path.join(output_dir, nom_fichier + '.wav')
+
+    # Charge le fichier audio avec pydub selon son format
+    if extension == '.mp3':
+        audio = AudioSegment.from_mp3(filepath)
+    elif extension == '.ogg':
+        audio = AudioSegment.from_ogg(filepath)
+    elif extension == '.flac':
+        audio = AudioSegment.from_file(filepath, format='flac')
+    else:
+        # Pour tout autre format, pydub essaie de le détecter automatiquement
+        audio = AudioSegment.from_file(filepath)
+
+    # Exporte en WAV
+    audio.export(chemin_sortie, format='wav')
+
+    return chemin_sortie
+>>>>>>> aissata/master

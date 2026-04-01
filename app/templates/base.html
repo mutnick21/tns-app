@@ -29,6 +29,45 @@
       --r:         6px;
       --rl:        12px;
     }
+
+    body.theme-dark {
+      --ink:       #0b121b;
+      --ink2:      #121a26;
+      --ink3:      #162234;
+      --panel:     #1a293b;
+      --panel2:    #172536;
+      --wire:      #2a3b4f;
+      --wire2:     #39516f;
+      --amber:     #69a3ff;
+      --amber-dim: #4a75b8;
+      --cyan:      #87d9ff;
+      --cyan-dim:  #3aa1cd;
+      --red:       #ff6b81;
+      --green:     #3de5b9;
+      --text:      #e2effa;
+      --muted:     #8eadc8;
+      --dim:       #5d7591;
+    }
+
+    body.theme-blue-night {
+      --ink:       #020d22;
+      --ink2:      #0f1c3f;
+      --ink3:      #16305b;
+      --panel:     #1c355f;
+      --panel2:    #203b68;
+      --wire:      #2e4b80;
+      --wire2:     #3b6192;
+      --amber:     #93c7ff;
+      --amber-dim: #6d9adf;
+      --cyan:      #7de2ff;
+      --cyan-dim:  #45b3d8;
+      --red:       #ff8bad;
+      --green:     #84f6c5;
+      --text:      #dce8f9;
+      --muted:     #8db4d4;
+      --dim:       #5d7ba1;
+    }
+
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     html { font-size:14px; scroll-behavior:smooth; }
     body { background:var(--ink); color:var(--text); font-family:var(--mono); min-height:100vh; overflow-x:hidden; }
@@ -58,6 +97,16 @@
       background:linear-gradient(90deg,transparent,var(--amber) 30%,var(--cyan) 70%,transparent);
       opacity:.35;
     }
+    .theme-selector {
+      margin-left:auto; display:flex; align-items:center; gap:0.5rem;
+      font-size:.7rem; color:var(--muted);
+    }
+    .theme-selector select {
+      border-radius:var(--r); border:1px solid var(--wire); background:var(--ink3); color:var(--text);
+      padding:.45rem .6rem; font-family:var(--mono); font-weight:600; letter-spacing:.05em;
+      cursor:pointer;
+    }
+    .theme-selector select:focus { outline:none; border-color:var(--cyan); box-shadow:0 0 0 2px rgba(13,240,212,.2); }
     .brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
     .brand-icon {
       width:32px; height:32px;
@@ -286,6 +335,14 @@
     </div>
   </a>
   <div class="nav-sep"></div>
+  <div class="theme-selector">
+    <label for="themeSelect">Thème</label>
+    <select id="themeSelect" aria-label="Choisir un thème">
+      <option value="default">Cyber (défaut)</option>
+      <option value="blue-night">Bleu de nuit</option>
+      <option value="dark">Mode sombre</option>
+    </select>
+  </div>
   <div class="sys-led"><div class="led"></div>SYSTÈME ACTIF</div>
   <div class="nav-links">
     <a href="/numerisation" class="nav-a {% if request.blueprint=='numerisation' %}on{% endif %}">
@@ -311,6 +368,26 @@ function toast(msg, type='inf', ms=4200) {
   setTimeout(() => { el.style.transition='opacity .3s,transform .3s'; el.style.opacity='0'; el.style.transform='translateX(28px)'; setTimeout(()=>el.remove(),300); }, ms);
 }
 function fmt(s){ return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+
+const themeOption = document.getElementById('themeSelect');
+const themeClassList = ['theme-dark','theme-blue-night'];
+function setTheme(theme){
+  document.body.classList.remove(...themeClassList);
+  if(theme==='dark') document.body.classList.add('theme-dark');
+  else if(theme==='blue-night') document.body.classList.add('theme-blue-night');
+  localStorage.setItem('tns-theme', theme);
+  if(themeOption) themeOption.value = theme || 'default';
+}
+
+(function(){
+  const saved = localStorage.getItem('tns-theme') || 'default';
+  if(themeOption){
+    themeOption.value = saved;
+    themeOption.addEventListener('change',e=>setTheme(e.target.value));
+  }
+  setTheme(saved);
+})();
+
 document.querySelectorAll('.drop').forEach(z=>{
   z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over')});
   z.addEventListener('dragleave',()=>z.classList.remove('over'));
