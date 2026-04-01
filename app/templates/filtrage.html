@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}02 · FFT & Filtrage – TNS Lab{% endblock %}
+{% block content %}
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div>
+    <div class="hero-eyebrow">module_02 · analyse fréquentielle</div>
+    <h1>FFT &amp; <em>Filtrage Rectangulaire</em></h1>
+    <p>Chargement audio multi-format avec conversion automatique en WAV, analyse spectrale par Transformée de Fourier Rapide, filtrage par masque rectangulaire H(f) et reconstruction IFFT.</p>
+  </div>
+  <div class="hero-meta">
+    <div class="meta-pill"><div class="meta-dot"></div>scipy.fft · FFT/IFFT</div>
+    <div class="meta-pill"><div class="meta-dot"></div>Masque rectangulaire uniquement</div>
+    <div class="meta-pill"><div class="meta-dot"></div>Export WAV 16 bits</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 1 : UPLOAD
+═══════════════════════════════════════════════════════ -->
+<div class="panel">
+  <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+  <div class="panel-head">
+    <div class="panel-title"><div class="panel-icon">📁</div>Chargement du signal audio</div>
+    <span class="chip ch-c">AUTO-CONVERSION WAV</span>
+  </div>
+  <div class="panel-body">
+    <div class="drop" id="dropZone">
+      <input type="file" id="fileInput" accept=".wav,.mp3,.ogg,.flac,.m4a,.aac">
+      <div class="drop-ico">🎵</div>
+      <div class="drop-ttl">Glissez un fichier audio ici</div>
+      <div class="drop-sub">ou cliquez pour parcourir vos fichiers</div>
+      <div class="drop-tags">
+        <span class="chip ch-a">WAV</span>
+        <span class="chip ch-c">MP3</span>
+        <span class="chip ch-g">OGG</span>
+        <span class="chip ch-r">FLAC</span>
+        <span style="font-size:.65rem;color:var(--dim);align-self:center">→ Tous convertis en WAV</span>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="uploadLoad" style="display:none;text-align:center;padding:1.5rem;gap:12px;align-items:center">
+      <span class="spin"></span>
+      <span style="font-size:.75rem;color:var(--muted)">Conversion &amp; analyse FFT en cours…</span>
+    </div>
+
+    <!-- Infos fichier chargé -->
+    <div id="fileInfo" style="display:none;margin-top:1.2rem">
+      <div class="g3">
+        <div class="stat"><div class="stat-l">FICHIER SOURCE</div><div class="stat-v" id="iFile" style="font-size:.9rem;word-break:break-all"></div></div>
+        <div class="stat"><div class="stat-l">DURÉE</div><div class="stat-v" id="iDur"></div><div class="stat-u">secondes</div></div>
+        <div class="stat"><div class="stat-l">FRÉQUENCE D'ÉCHANT.</div><div class="stat-v" id="iSR"></div><div class="stat-u">kHz</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 2 : GRAPHIQUES ORIGINAUX
+═══════════════════════════════════════════════════════ -->
+<div id="origSection" style="display:none">
+  <div class="g2">
+    <div class="panel">
+      <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+      <div class="panel-head">
+        <div class="panel-title"><div class="panel-icon">📈</div>Signal temporel <em style="font-family:var(--mono);font-style:normal;color:var(--amber)">x(t)</em></div>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <div class="plot-wrap">
+          <img id="plotTimeOrig" alt="Signal temporel">
+          <div class="plot-tag">TEMPOREL · x(t)</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+      <div class="panel-head">
+        <div class="panel-title"><div class="panel-icon">📊</div>Spectre FFT <em style="font-family:var(--mono);font-style:normal;color:var(--amber)">|X(f)|</em></div>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <div class="plot-wrap">
+          <img id="plotFftOrig" alt="Spectre FFT">
+          <div class="plot-tag">SPECTRAL · |X(f)|</div>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:.9rem 1.4rem">
+        <div style="font-size:.68rem;color:var(--muted);line-height:1.7;border-left:2px solid var(--amber);padding-left:.8rem">
+          <span style="color:var(--amber);font-weight:700">↑ Analyse :</span> identifiez visuellement les zones fréquentielles de bruit. Définissez ensuite f<sub>min</sub> et f<sub>max</sub> ci-dessous.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 3 : PARAMÈTRES DU FILTRE
+═══════════════════════════════════════════════════════ -->
+<div class="panel" id="filterPanel" style="display:none">
+  <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+  <div class="panel-head">
+    <div class="panel-title"><div class="panel-icon">⚡</div>Définition du filtre rectangulaire</div>
+    <span class="chip ch-a">MASQUE H(f)</span>
+  </div>
+  <div class="panel-body">
+    <div class="g2">
+
+      <!-- Colonne gauche : paramètres -->
+      <div>
+        <!-- Formule -->
+        <div class="formula" style="margin-bottom:1.1rem">
+          <span class="sa">H(f)</span> = 1 &nbsp;si &nbsp;f<sub>min</sub> ≤ |f| ≤ f<sub>max</sub>, &nbsp;0 sinon &nbsp;<span style="color:var(--dim)">(passe-bande)</span><br>
+          <span class="sc">H̄(f)</span> = 1 − H(f) &nbsp;<span style="color:var(--dim)">(coupe-bande)</span>
+        </div>
+
+        <!-- Bornes -->
+        <div class="g2" style="margin-bottom:.8rem">
+          <div class="field">
+            <label>F<sub>MIN</sub> <span class="u">Hz</span></label>
+            <input type="number" id="fMin" value="300" min="0" step="10">
+          </div>
+          <div class="field">
+            <label>F<sub>MAX</sub> <span class="u">Hz</span></label>
+            <input type="number" id="fMax" value="3400" min="1" step="10">
+          </div>
+        </div>
+
+        <!-- Type de filtre -->
+        <div class="field">
+          <label>TYPE DE FILTRE</label>
+          <div class="rcards">
+            <div class="rcard">
+              <input type="radio" name="fType" id="ftPB" value="passband" checked>
+              <label for="ftPB">Passe-bande<small>conserve la bande</small></label>
+            </div>
+            <div class="rcard">
+              <input type="radio" name="fType" id="ftSB" value="stopband">
+              <label for="ftSB">Coupe-bande<small>supprime la bande</small></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-amber" id="filterBtn">⚡ &nbsp;Appliquer le filtre</button>
+          <span id="filterSpin" style="display:none;align-items:center;gap:8px">
+            <span class="spin"></span>
+            <span style="font-size:.7rem;color:var(--muted)">Filtrage &amp; IFFT…</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Colonne droite : visualiseur de masque + mémo -->
+      <div>
+        <div class="field">
+          <label>APERÇU DU MASQUE <span class="u">H(f)</span></label>
+          <canvas class="mask-c" id="maskCanvas"></canvas>
+          <div class="mask-ann">
+            <span>0 Hz</span>
+            <span id="maskMid" style="color:var(--amber)"></span>
+            <span id="maskNyq"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label>MÉMO JUSTIFICATION</label>
+          <textarea id="justif" rows="4"
+            style="background:var(--ink3);border:1px solid var(--wire);border-radius:var(--r);color:var(--text);font-family:var(--mono);font-size:.73rem;padding:.6rem;resize:vertical;width:100%"
+            placeholder="Ex : composante 50 Hz (secteur) visible en basse fréquence → passe-bande [300–3400 Hz] pour isoler la plage vocale…"></textarea>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 4 : RÉSULTATS COMPARAISON
+═══════════════════════════════════════════════════════ -->
+<div id="resultSection" style="display:none">
+
+  <div class="div">COMPARAISON AVANT / APRÈS FILTRAGE</div>
+
+  <div class="g2" style="margin-bottom:1.4rem">
+    <div class="panel">
+      <div class="c c-tl"></div><div class="c c-tr"></div>
+      <div class="panel-head"><div class="panel-title"><div class="panel-icon">⏮</div>Temporel – Avant</div><span class="chip ch-r">ORIGINAL</span></div>
+      <div class="panel-body" style="padding:0"><div class="plot-wrap"><img id="rTimeOrig"><div class="plot-tag">AVANT</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="c c-tl"></div><div class="c c-tr"></div>
+      <div class="panel-head"><div class="panel-title"><div class="panel-icon">⏭</div>Temporel – Après</div><span class="chip ch-g">FILTRÉ</span></div>
+      <div class="panel-body" style="padding:0"><div class="plot-wrap"><img id="rTimeFilt"><div class="plot-tag">APRÈS</div></div></div>
+    </div>
+  </div>
+
+  <div class="g2" style="margin-bottom:1.4rem">
+    <div class="panel">
+      <div class="c c-tl"></div><div class="c c-tr"></div>
+      <div class="panel-head"><div class="panel-title"><div class="panel-icon">📊</div>Spectre FFT – Avant</div><span class="chip ch-r">ORIGINAL</span></div>
+      <div class="panel-body" style="padding:0"><div class="plot-wrap"><img id="rFftOrig"><div class="plot-tag">SPECTRE AVANT</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="c c-tl"></div><div class="c c-tr"></div>
+      <div class="panel-head"><div class="panel-title"><div class="panel-icon">📊</div>Spectre FFT – Après</div><span class="chip ch-g">FILTRÉ</span></div>
+      <div class="panel-body" style="padding:0"><div class="plot-wrap"><img id="rFftFilt"><div class="plot-tag">SPECTRE APRÈS</div></div></div>
+    </div>
+  </div>
+
+  <!-- Lecteur + téléchargement -->
+  <div class="panel">
+    <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+    <div class="panel-head">
+      <div class="panel-title"><div class="panel-icon">🔊</div>Signal filtré – Écoute &amp; Export</div>
+      <span class="chip ch-g">WAV 16 BITS</span>
+    </div>
+    <div class="panel-body">
+      <div class="g2" style="align-items:center;gap:2rem">
+        <div>
+          <div style="font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:.6rem">LECTURE DIRECTE</div>
+          <audio id="filtPlayer" controls></audio>
+        </div>
+        <div>
+          <div style="font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:.8rem">EXPORT</div>
+          <a class="btn btn-green" id="dlBtn" href="#">↓ &nbsp;Télécharger WAV filtré</a>
+          <div style="font-size:.6rem;color:var(--dim);margin-top:.6rem">Mono · 16 bits PCM · même fs que source</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* ═══════════════════════  JS Filtrage  ═══════════════════════ */
+let uid=null, wavFile=null, sr=44100;
+
+/* ── Upload ── */
+document.getElementById('fileInput').addEventListener('change', function(){ if(this.files[0]) doUpload(this.files[0]); });
+const dropZone=document.getElementById('dropZone');
+dropZone.addEventListener('drop',e=>{ e.preventDefault(); dropZone.classList.remove('over'); if(e.dataTransfer.files[0]) doUpload(e.dataTransfer.files[0]); });
+
+async function doUpload(file){
+  document.getElementById('uploadLoad').style.display='flex';
+  document.getElementById('fileInfo').style.display='none';
+  document.getElementById('origSection').style.display='none';
+  document.getElementById('filterPanel').style.display='none';
+  document.getElementById('resultSection').style.display='none';
+
+  const fd=new FormData(); fd.append('file',file);
+  try{
+    const r=await fetch('/filtrage/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.success){
+      uid=d.uid; wavFile=d.wav_file; sr=d.sample_rate;
+      // Infos
+      document.getElementById('iFile').textContent=d.filename;
+      document.getElementById('iDur').textContent=d.duration_s;
+      document.getElementById('iSR').textContent=(d.sample_rate/1000).toFixed(3);
+      document.getElementById('fileInfo').style.display='block';
+      // Plots
+      document.getElementById('plotTimeOrig').src='data:image/png;base64,'+d.plot_time;
+      document.getElementById('plotFftOrig').src='data:image/png;base64,'+d.plot_fft;
+      document.getElementById('origSection').style.display='block';
+      document.getElementById('filterPanel').style.display='block';
+      // Nyquist dans mask
+      document.getElementById('maskNyq').textContent=(sr/2000).toFixed(1)+' kHz';
+      document.getElementById('fMax').max=sr/2;
+      drawMask();
+      toast('Fichier chargé – '+d.duration_s+'s @ '+(sr/1000)+'kHz','ok');
+      document.getElementById('origSection').scrollIntoView({behavior:'smooth'});
+    } else toast(d.message,'err');
+  } catch(e){ toast('Erreur upload : '+e.message,'err'); }
+  finally{ document.getElementById('uploadLoad').style.display='none'; }
+}
+
+/* ── Masque ── */
+function drawMask(){
+  const c=document.getElementById('maskCanvas');
+  const cx=c.getContext('2d');
+  const W=c.width=c.offsetWidth, H=c.height=c.offsetHeight;
+  const fMin=parseFloat(document.getElementById('fMin').value)||0;
+  const fMax=parseFloat(document.getElementById('fMax').value)||sr/2;
+  const nyq=sr/2||22050;
+  const type=document.querySelector('[name="fType"]:checked').value;
+  const x1=(fMin/nyq)*W, x2=(fMax/nyq)*W;
+
+  cx.clearRect(0,0,W,H);
+
+  if(type==='passband'){
+    // zones rejetées
+    cx.fillStyle='rgba(255,71,87,0.12)'; cx.fillRect(0,0,x1,H); cx.fillRect(x2,0,W-x2,H);
+    // zone active
+    cx.fillStyle='rgba(13,240,212,0.18)'; cx.fillRect(x1,0,x2-x1,H);
+    // ligne H=1
+    cx.strokeStyle='rgba(13,240,212,0.6)'; cx.lineWidth=1.5; cx.setLineDash([]);
+    cx.beginPath(); cx.moveTo(x1,H*0.2); cx.lineTo(x2,H*0.2); cx.stroke();
+    // lignes H=0
+    cx.strokeStyle='rgba(255,71,87,0.4)'; cx.lineWidth=1; cx.setLineDash([3,3]);
+    cx.beginPath(); cx.moveTo(0,H*0.2); cx.lineTo(x1,H*0.2); cx.stroke();
+    cx.beginPath(); cx.moveTo(x2,H*0.2); cx.lineTo(W,H*0.2); cx.stroke();
+  } else {
+    cx.fillStyle='rgba(13,240,212,0.12)'; cx.fillRect(0,0,x1,H); cx.fillRect(x2,0,W-x2,H);
+    cx.fillStyle='rgba(255,71,87,0.18)'; cx.fillRect(x1,0,x2-x1,H);
+    cx.strokeStyle='rgba(13,240,212,0.5)'; cx.lineWidth=1.5; cx.setLineDash([]);
+    cx.beginPath(); cx.moveTo(0,H*0.2); cx.lineTo(x1,H*0.2); cx.stroke();
+    cx.beginPath(); cx.moveTo(x2,H*0.2); cx.lineTo(W,H*0.2); cx.stroke();
+    cx.strokeStyle='rgba(255,71,87,0.5)'; cx.lineWidth=1; cx.setLineDash([3,3]);
+    cx.beginPath(); cx.moveTo(x1,H*0.2); cx.lineTo(x2,H*0.2); cx.stroke();
+  }
+  // Bords verticaux
+  const lc=type==='passband'?'#0df0d4':'#ff4757';
+  cx.strokeStyle=lc; cx.lineWidth=1.5; cx.setLineDash([4,3]);
+  cx.beginPath(); cx.moveTo(x1,0); cx.lineTo(x1,H); cx.stroke();
+  cx.beginPath(); cx.moveTo(x2,0); cx.lineTo(x2,H); cx.stroke();
+  // Labels
+  cx.setLineDash([]);
+  cx.font='9px JetBrains Mono, monospace'; cx.fillStyle=lc;
+  cx.fillText(fMin+'Hz', Math.max(x1+3,2), 10);
+  cx.fillText(fMax+'Hz', Math.min(x2+3,W-58), 10);
+  // Annotation centrale
+  document.getElementById('maskMid').textContent=Math.round((fMin+fMax)/2)+' Hz (centre)';
+}
+['fMin','fMax'].forEach(id=>document.getElementById(id).addEventListener('input',drawMask));
+document.querySelectorAll('[name="fType"]').forEach(r=>r.addEventListener('change',drawMask));
+window.addEventListener('resize',()=>{ if(uid) drawMask(); });
+
+/* ── Filtrage ── */
+document.getElementById('filterBtn').addEventListener('click', async()=>{
+  if(!uid){ toast('Charger un fichier audio d\'abord.','err'); return; }
+  const fMin=parseFloat(document.getElementById('fMin').value);
+  const fMax=parseFloat(document.getElementById('fMax').value);
+  if(isNaN(fMin)||isNaN(fMax)||fMin>=fMax){ toast('f_min doit être < f_max.','err'); return; }
+
+  document.getElementById('filterSpin').style.display='flex';
+  document.getElementById('filterBtn').disabled=true;
+  document.getElementById('resultSection').style.display='none';
+
+  try{
+    const r=await fetch('/filtrage/filter',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({uid, wav_file:wavFile, f_min:fMin, f_max:fMax, filter_type:document.querySelector('[name="fType"]:checked').value})
+    });
+    const d=await r.json();
+    if(d.success){
+      document.getElementById('rTimeOrig').src='data:image/png;base64,'+d.plot_time_orig;
+      document.getElementById('rTimeFilt').src='data:image/png;base64,'+d.plot_time_filt;
+      document.getElementById('rFftOrig').src='data:image/png;base64,'+d.plot_fft_orig;
+      document.getElementById('rFftFilt').src='data:image/png;base64,'+d.plot_fft_filt;
+      document.getElementById('filtPlayer').src=d.stream_url+'?t='+Date.now();
+      document.getElementById('dlBtn').href=d.download_url;
+      document.getElementById('resultSection').style.display='block';
+      document.getElementById('resultSection').scrollIntoView({behavior:'smooth'});
+      toast('Filtrage appliqué avec succès.','ok');
+    } else toast(d.message,'err');
+  } catch(e){ toast('Erreur : '+e.message,'err'); }
+  finally{
+    document.getElementById('filterSpin').style.display='none';
+    document.getElementById('filterBtn').disabled=false;
+  }
+});
+</script>
+{% endblock %}
