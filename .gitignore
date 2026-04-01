@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+database/
+segments/
+uploads/
+*.wav
+*.mp3
+.DS_Store
+venv/
+.venv/
+dist/
+build/
+*.egg-info/

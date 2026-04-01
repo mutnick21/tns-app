@@ -1,0 +1,24 @@
+# docker-compose.yml – TNS Mini-Projet ESP/UCAD
+version: "3.9"
+
+services:
+  tns-app:
+    build: .
+    container_name: tns_flask_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+    volumes:
+      # Persistance des données audio entre redémarrages
+      - ./database:/app/database
+      - ./segments:/app/segments
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

@@ -1,0 +1,549 @@
+{% extends "base.html" %}
+{% block title %}01 · Numérisation & Segmentation – TNS Lab{% endblock %}
+{% block content %}
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div>
+    <div class="hero-eyebrow">module_01 · numérisation vocale</div>
+    <h1>Capture &amp; <em>Segmentation</em></h1>
+    <p>Enregistrement microphone avec paramètres de numérisation contrôlés, sauvegarde WAV structurée et découpage automatique par détection de silence.</p>
+  </div>
+  <div class="hero-meta">
+    <div class="meta-pill"><div class="meta-dot"></div>WAV · PCM uniquement</div>
+    <div class="meta-pill"><div class="meta-dot"></div>16 / 22,05 / 44,1 kHz</div>
+    <div class="meta-pill"><div class="meta-dot"></div>16 ou 32 bits</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 1 : PARAMÈTRES + ENREGISTREUR
+═══════════════════════════════════════════════════════ -->
+<div class="g2">
+
+  <!-- Paramètres -->
+  <div class="panel">
+    <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+    <div class="panel-head">
+      <div class="panel-title"><div class="panel-icon">⚙</div>Paramètres de numérisation</div>
+      <span class="chip ch-a">CONFIG</span>
+    </div>
+    <div class="panel-body">
+
+      <div class="field">
+        <label>FRÉQUENCE D'ÉCHANTILLONNAGE <span class="u">fs</span></label>
+        <div class="rcards">
+          {% for rate in allowed_rates %}
+          <div class="rcard">
+            <input type="radio" name="sampleRate" id="sr{{ rate }}" value="{{ rate }}"
+                   {% if rate == 16000 %}checked{% endif %}>
+            <label for="sr{{ rate }}">
+              {% if rate == 22050 %}22,05{% else %}{{ rate // 1000 }}{% endif %} kHz
+              <small>{% if rate == 16000 %}voix{% elif rate == 22050 %}qualité{% else %}hi-fi{% endif %}</small>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field">
+        <label>PROFONDEUR DE CODAGE <span class="u">bits</span></label>
+        <div class="rcards">
+          {% for bits in allowed_bits %}
+          <div class="rcard">
+            <input type="radio" name="bitDepth" id="bd{{ bits }}" value="{{ bits }}"
+                   {% if bits == 16 %}checked{% endif %}>
+            <label for="bd{{ bits }}">
+              {{ bits }} bits
+              <small>{% if bits == 16 %}standard{% else %}haute résolution{% endif %}</small>
+            </label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="field">
+          <label>DURÉE <span class="u">secondes</span></label>
+          <input type="number" id="duration" value="5" min="1" max="120">
+        </div>
+        <div class="field">
+          <label>FRÉQUENCE DE NYQUIST</label>
+          <input type="text" id="nyquist" value="8 000 Hz" readonly
+                 style="color:var(--amber);cursor:default">
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="field">
+          <label>LOCUTEUR #</label>
+          <input type="text" id="locuteur" value="01" maxlength="4">
+        </div>
+        <div class="field">
+          <label>SESSION #</label>
+          <input type="text" id="session" value="01" maxlength="4">
+        </div>
+      </div>
+
+      <!-- Info chemin -->
+      <div style="background:var(--ink);border:1px solid var(--wire);border-radius:var(--r);padding:.7rem .9rem;font-size:.65rem;color:var(--dim);margin-top:.5rem;line-height:1.8">
+        <span style="color:var(--muted)">Chemin de sortie :</span><br>
+        <span id="pathPreview" style="color:var(--amber)">database/locuteur_01/session_01/enreg_001_16kHz_16b.wav</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enregistreur -->
+  <div class="panel">
+    <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+    <div class="panel-head">
+      <div class="panel-title"><div class="panel-icon">🎙</div>Enregistrement microphone</div>
+      <span id="recChip" class="chip ch-r" style="display:none">● REC</span>
+    </div>
+    <div class="panel-body">
+
+      <!-- Oscilloscope -->
+      <div class="osc" style="margin-bottom:1rem">
+        <div class="osc-tag">CH1 · AUDIO IN</div>
+        <div class="osc-hz" id="oscHz">— Hz</div>
+        <canvas id="oscCanvas"></canvas>
+      </div>
+
+      <!-- Contrôle REC -->
+      <div class="rec-block">
+        <div class="rec-ring" id="recRing">
+          <svg viewBox="0 0 58 58">
+            <circle class="ring-bg"   cx="29" cy="29" r="26"/>
+            <circle class="ring-fill" id="ringFill" cx="29" cy="29" r="26"/>
+          </svg>
+          <div class="rec-inner"><div class="rec-dot"></div></div>
+        </div>
+        <div class="rec-info">
+          <div class="rec-time" id="recTimer">00:00</div>
+          <div class="rec-st"  id="recSt">Cliquer pour enregistrer</div>
+        </div>
+      </div>
+
+      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+
+      <!-- Preview audio -->
+      <div id="audioWrap" style="display:none;margin-top:1.1rem">
+        <div style="font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:.5rem">PRÉVISUALISATION</div>
+        <audio id="previewAudio" controls></audio>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-green" id="saveBtn" disabled>↓ &nbsp;Sauvegarder WAV</button>
+        <span id="saveSpinner" style="display:none"><span class="spin"></span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 2 : SEGMENTATION
+═══════════════════════════════════════════════════════ -->
+<div class="panel">
+  <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+  <div class="panel-head">
+    <div class="panel-title"><div class="panel-icon">✂</div>Segmentation automatique par silence</div>
+    <span class="chip ch-c">ALGORITHME VAD</span>
+  </div>
+  <div class="panel-body">
+    <div class="g3">
+      <div class="field">
+        <label>FICHIER WAV SOURCE</label>
+        <select id="segFile">
+          <option value="">— sélectionner —</option>
+          {% for rec in recordings %}
+          <option value="{{ rec.path }}">{{ rec.locuteur }}/{{ rec.session }}/{{ rec.filename }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>SEUIL D'AMPLITUDE <span class="u">ε</span></label>
+        <input type="number" id="threshold" value="0.02" min="0.001" max="0.5" step="0.001">
+        <div style="margin-top:.5rem">
+          <input type="range" id="threshR" min="0.001" max="0.5" step="0.001" value="0.02">
+          <div style="display:flex;justify-content:space-between;font-size:.58rem;color:var(--dim);margin-top:3px"><span>0.001</span><span>0.5</span></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>SILENCE MINIMUM <span class="u">ms</span></label>
+        <input type="number" id="minSil" value="300" min="50" max="2000" step="50">
+        <div style="margin-top:.5rem">
+          <input type="range" id="minSilR" min="50" max="2000" step="50" value="300">
+          <div style="display:flex;justify-content:space-between;font-size:.58rem;color:var(--dim);margin-top:3px"><span>50 ms</span><span>2000 ms</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-amber" id="segBtn">◈ &nbsp;Lancer la segmentation</button>
+      <span id="segSpinner" style="display:none;align-items:center;gap:8px">
+        <span class="spin"></span>
+        <span style="font-size:.7rem;color:var(--muted)">Analyse en cours…</span>
+      </span>
+    </div>
+
+    <!-- Résultats -->
+    <div id="segOut" style="display:none;margin-top:1.5rem">
+      <div class="div" id="segDivLabel">SEGMENTS DÉTECTÉS</div>
+
+      <!-- Stats row -->
+      <div class="g3" id="segStats" style="margin-bottom:1.2rem"></div>
+
+      <div style="overflow-x:auto">
+        <table class="tbl" id="segTable">
+          <thead><tr>
+            <th>#</th><th>Fichier</th><th>Durée</th><th>Écouter</th><th>Télécharger</th>
+          </tr></thead>
+          <tbody id="segBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SECTION 3 : BASE DE DONNÉES
+═══════════════════════════════════════════════════════ -->
+<div class="panel">
+  <div class="c c-tl"></div><div class="c c-tr"></div><div class="c c-bl"></div><div class="c c-br"></div>
+  <div class="panel-head">
+    <div class="panel-title"><div class="panel-icon">🗄</div>Base de données audio</div>
+    <span class="chip ch-g">{{ recordings|length }} FICHIER(S)</span>
+  </div>
+  <div class="panel-body">
+    {% if recordings %}
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>Locuteur</th><th>Session</th><th>Fichier</th><th>Taille</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          {% for rec in recordings %}
+          <tr>
+            <td><span class="chip ch-a">{{ rec.locuteur }}</span></td>
+            <td><span style="color:var(--muted)">{{ rec.session }}</span></td>
+            <td style="font-size:.73rem;color:var(--text)">{{ rec.filename }}</td>
+            <td><span class="chip ch-c">{{ rec.size_kb }} KB</span></td>
+            <td style="display:flex;gap:.8rem;align-items:center">
+              <a href="/numerisation/database/{{ rec.locuteur }}/{{ rec.session }}/{{ rec.filename }}" target="_blank">▶ Écouter</a>
+              <a href="/numerisation/database/{{ rec.locuteur }}/{{ rec.session }}/{{ rec.filename }}" download>↓ WAV</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem 1rem;color:var(--dim)">
+      <div style="font-size:2rem;margin-bottom:.8rem">🎙</div>
+      <div style="font-family:var(--display);font-size:1rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Aucun enregistrement</div>
+      <div style="font-size:.72rem">Commencez par capturer votre voix ci-dessus.</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* ═══════════════════════  JS Numérisation  ═══════════════════════ */
+let recorder=null, chunks=[], blob=null, timerID=null, elapsed=0, animID=null, analyser=null, stream=null;
+
+const recRing   = document.getElementById('recRing');
+const recTimer  = document.getElementById('recTimer');
+const recSt     = document.getElementById('recSt');
+const recChip   = document.getElementById('recChip');
+const saveBtn   = document.getElementById('saveBtn');
+const progFill  = document.getElementById('progFill');
+const prevAudio = document.getElementById('previewAudio');
+const audioWrap = document.getElementById('audioWrap');
+const canvas    = document.getElementById('oscCanvas');
+const ctx2d     = canvas.getContext('2d');
+
+/* ── Mise à jour Nyquist & aperçu chemin ── */
+function updateInfo() {
+  const sr  = parseInt(document.querySelector('[name="sampleRate"]:checked').value);
+  const bd  = parseInt(document.querySelector('[name="bitDepth"]:checked').value);
+  const loc = document.getElementById('locuteur').value.padStart(2,'0');
+  const ses = document.getElementById('session').value.padStart(2,'0');
+  const rateLabel = sr===22050?'22kHz': (sr/1000)+'kHz';
+  document.getElementById('nyquist').value = (sr/2).toLocaleString('fr-FR')+' Hz';
+  document.getElementById('pathPreview').textContent =
+    `database/locuteur_${loc}/session_${ses}/enreg_001_${rateLabel}_${bd}b.wav`;
+  if(canvas.offsetWidth) document.getElementById('oscHz').textContent = `fs = ${(sr/1000).toFixed(3)} kHz`;
+}
+document.querySelectorAll('[name="sampleRate"],[name="bitDepth"]').forEach(el=>el.addEventListener('change',updateInfo));
+['locuteur','session'].forEach(id=>document.getElementById(id).addEventListener('input',updateInfo));
+updateInfo();
+
+/* ── Synchro sliders ── */
+function sync(a,b){
+  document.getElementById(a).addEventListener('input',()=>document.getElementById(b).value=document.getElementById(a).value);
+  document.getElementById(b).addEventListener('input',()=>document.getElementById(a).value=document.getElementById(b).value);
+}
+sync('threshold','threshR'); sync('minSil','minSilR');
+
+/* ── Oscilloscope ── */
+function drawOsc(){
+  if(!analyser) return;
+  const buf=new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteTimeDomainData(buf);
+  const W=canvas.width=canvas.offsetWidth, H=canvas.height=canvas.offsetHeight;
+  ctx2d.clearRect(0,0,W,H);
+  // Ligne centrale
+  ctx2d.strokeStyle='rgba(13,240,212,0.1)';ctx2d.lineWidth=1;
+  ctx2d.beginPath();ctx2d.moveTo(0,H/2);ctx2d.lineTo(W,H/2);ctx2d.stroke();
+  // Forme d'onde
+  ctx2d.strokeStyle='#0df0d4';ctx2d.lineWidth=1.5;ctx2d.beginPath();
+  const sw=W/buf.length;let x=0;
+  for(let i=0;i<buf.length;i++){
+    const y=(buf[i]/128)*H/2;
+    i===0?ctx2d.moveTo(x,y):ctx2d.lineTo(x,y);x+=sw;
+  }
+  ctx2d.stroke();
+  animID=requestAnimationFrame(drawOsc);
+}
+
+/* ══════════════════════════════════════════════════════
+   ENCODEUR WAV NATIF (sans ffmpeg, sans dépendance)
+   Écrit les headers RIFF/WAV et les samples PCM Int16
+   directement dans un ArrayBuffer côté navigateur.
+══════════════════════════════════════════════════════ */
+
+/**
+ * Convertit un AudioBuffer en Blob WAV PCM 16 bits.
+ * @param {AudioBuffer} audioBuffer
+ * @param {number} targetSampleRate  – fréquence voulue
+ * @returns {Blob}  WAV valide (magic bytes RIFF)
+ */
+function audioBufferToWavBlob(audioBuffer, targetSampleRate) {
+  // Rééchantillonnage simple si nécessaire (interpolation linéaire)
+  let samples;
+  const src = audioBuffer.getChannelData(0); // Mono : canal 0 uniquement
+  if (audioBuffer.sampleRate !== targetSampleRate) {
+    const ratio    = audioBuffer.sampleRate / targetSampleRate;
+    const outLen   = Math.floor(src.length / ratio);
+    samples = new Float32Array(outLen);
+    for (let i = 0; i < outLen; i++) {
+      const pos = i * ratio;
+      const lo  = Math.floor(pos);
+      const hi  = Math.min(lo + 1, src.length - 1);
+      samples[i] = src[lo] + (src[hi] - src[lo]) * (pos - lo);
+    }
+  } else {
+    samples = src;
+  }
+
+  // Float32 → Int16 PCM
+  const pcm = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    pcm[i]  = s < 0 ? s * 32768 : s * 32767;
+  }
+
+  // Construction du header WAV RIFF
+  const numChannels  = 1;
+  const bitsPerSample = 16;
+  const byteRate     = targetSampleRate * numChannels * bitsPerSample / 8;
+  const blockAlign   = numChannels * bitsPerSample / 8;
+  const dataSize     = pcm.byteLength;
+  const buffer       = new ArrayBuffer(44 + dataSize);
+  const view         = new DataView(buffer);
+
+  const w = (off, str)  => { for (let i=0;i<str.length;i++) view.setUint8(off+i, str.charCodeAt(i)); };
+  const u16 = (off, v)  => view.setUint16(off, v, true);
+  const u32 = (off, v)  => view.setUint32(off, v, true);
+
+  w(0,  'RIFF');
+  u32(4, 36 + dataSize);          // Taille totale - 8
+  w(8,  'WAVE');
+  w(12, 'fmt ');
+  u32(16, 16);                    // Taille du chunk fmt
+  u16(20, 1);                     // PCM = 1
+  u16(22, numChannels);
+  u32(24, targetSampleRate);
+  u32(28, byteRate);
+  u16(32, blockAlign);
+  u16(34, bitsPerSample);
+  w(36, 'data');
+  u32(40, dataSize);
+
+  // Écriture des samples PCM
+  new Int16Array(buffer, 44).set(pcm);
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+/* ── REC ── */
+recRing.addEventListener('click', async ()=>{
+  if(recorder && recorder.state==='recording') stopRec();
+  else await startRec();
+});
+
+async function startRec(){
+  try { stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false}); }
+  catch(e){ toast('Microphone inaccessible : '+e.message,'err'); return; }
+
+  const aCtx=new (window.AudioContext||window.webkitAudioContext)();
+  analyser=aCtx.createAnalyser(); analyser.fftSize=2048;
+  aCtx.createMediaStreamSource(stream).connect(analyser);
+
+  // On enregistre en WebM pour la capture, mais on CONVERTIT en WAV à l'arrêt
+  const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'audio/webm';
+  recorder=new MediaRecorder(stream,{mimeType:mime});
+  chunks=[];
+  recorder.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
+
+  recorder.onstop=async ()=>{
+    recSt.textContent='Encodage WAV…';
+    try {
+      // 1) Décoder le WebM via AudioContext (natif, aucune lib)
+      const webmBlob   = new Blob(chunks, {type: mime});
+      const arrayBuf   = await webmBlob.arrayBuffer();
+      const decoded    = await aCtx.decodeAudioData(arrayBuf);
+
+      // 2) Encoder en WAV PCM 16 bits à la fréquence choisie
+      const targetSR   = parseInt(document.querySelector('[name="sampleRate"]:checked').value);
+      blob             = audioBufferToWavBlob(decoded, targetSR);
+
+      // Prévisualisation (le navigateur lit aussi les WAV)
+      prevAudio.src = URL.createObjectURL(blob);
+      audioWrap.style.display='block';
+      saveBtn.disabled=false;
+      recSt.textContent='WAV prêt – prêt à sauvegarder';
+      toast('Encodage WAV terminé.','ok');
+    } catch(encErr) {
+      toast('Erreur encodage WAV : '+encErr.message,'err');
+      recSt.textContent='Erreur encodage.';
+    }
+
+    if(animID)cancelAnimationFrame(animID);
+    analyser=null;
+    stream.getTracks().forEach(t=>t.stop());
+    // Vider canvas
+    canvas.width=canvas.offsetWidth; canvas.height=canvas.offsetHeight;
+    ctx2d.clearRect(0,0,canvas.width,canvas.height);
+  };
+
+  const maxMs=parseInt(document.getElementById('duration').value)*1000;
+  elapsed=0; progFill.style.width='0%';
+
+  timerID=setInterval(()=>{
+    elapsed++;
+    recTimer.textContent=fmt(elapsed);
+    const ringCirc=164;
+    const offset=ringCirc-(elapsed*1000/maxMs)*ringCirc;
+    document.getElementById('ringFill').style.strokeDashoffset=Math.max(offset,0);
+    progFill.style.width=Math.min(elapsed*1000/maxMs*100,100)+'%';
+    if(elapsed*1000>=maxMs) stopRec();
+  },1000);
+
+  recorder.start(100);
+  recRing.classList.add('on');
+  recTimer.classList.add('on');
+  recChip.style.display='inline-flex';
+  recSt.textContent='Enregistrement en cours…';
+  drawOsc();
+}
+
+function stopRec(){
+  if(recorder&&recorder.state!=='inactive') recorder.stop();
+  clearInterval(timerID);
+  recRing.classList.remove('on');
+  recTimer.classList.remove('on');
+  recChip.style.display='none';
+  recSt.textContent='Traitement…';
+}
+
+/* ── Sauvegarde ── */
+saveBtn.addEventListener('click', async()=>{
+  if(!blob){toast('Aucun enregistrement.','err');return;}
+  saveBtn.disabled=true;
+  document.getElementById('saveSpinner').style.display='inline-flex';
+
+  const fd=new FormData();
+  fd.append('audio',blob,'rec.webm');
+  fd.append('sampleRate',document.querySelector('[name="sampleRate"]:checked').value);
+  fd.append('bitDepth',document.querySelector('[name="bitDepth"]:checked').value);
+  fd.append('locuteur',document.getElementById('locuteur').value);
+  fd.append('session',document.getElementById('session').value);
+
+  try{
+    const r=await fetch('/numerisation/save',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.success){
+      toast(`Sauvegardé : ${d.filename} (${d.size_kb} KB)`,'ok');
+      const opt=document.createElement('option');
+      opt.value=d.filepath;
+      opt.textContent=`${d.locuteur}/${d.session}/${d.filename}`;
+      document.getElementById('segFile').appendChild(opt);
+      recTimer.textContent='00:00';
+      document.getElementById('ringFill').style.strokeDashoffset='164';
+      progFill.style.width='0%';
+      blob=null;
+    } else { toast(d.message,'err'); }
+  } catch(e){ toast('Erreur : '+e.message,'err'); }
+  finally{
+    saveBtn.disabled=false;
+    document.getElementById('saveSpinner').style.display='none';
+  }
+});
+
+/* ── Segmentation ── */
+document.getElementById('segBtn').addEventListener('click', async()=>{
+  const fp=document.getElementById('segFile').value;
+  if(!fp){toast('Sélectionner un fichier WAV.','err');return;}
+
+  document.getElementById('segSpinner').style.display='flex';
+  document.getElementById('segBtn').disabled=true;
+  document.getElementById('segOut').style.display='none';
+
+  try{
+    const r=await fetch('/numerisation/segment',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({filepath:fp, threshold:parseFloat(document.getElementById('threshold').value), min_silence:parseInt(document.getElementById('minSil').value)})
+    });
+    const d=await r.json();
+    if(d.success){ renderSegs(d.segments,d.count); toast(`${d.count} segment(s) détecté(s).`,'ok'); }
+    else toast(d.message,'err');
+  } catch(e){ toast('Erreur : '+e.message,'err'); }
+  finally{
+    document.getElementById('segSpinner').style.display='none';
+    document.getElementById('segBtn').disabled=false;
+  }
+});
+
+function renderSegs(segs, count){
+  // Stats
+  const statsEl=document.getElementById('segStats');
+  const totalDur=segs.reduce((a,s)=>a+s.duration_s,0).toFixed(1);
+  const maxDur=segs.length?Math.max(...segs.map(s=>s.duration_s)).toFixed(1):0;
+  statsEl.innerHTML=`
+    <div class="stat"><div class="stat-l">SEGMENTS</div><div class="stat-v">${count}</div></div>
+    <div class="stat"><div class="stat-l">DURÉE TOTALE</div><div class="stat-v">${totalDur}</div><div class="stat-u">secondes</div></div>
+    <div class="stat"><div class="stat-l">SEGMENT LE + LONG</div><div class="stat-v">${maxDur}</div><div class="stat-u">secondes</div></div>
+  `;
+  // Table
+  const body=document.getElementById('segBody');
+  body.innerHTML='';
+  segs.forEach((s,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><span class="chip ch-c">${String(i+1).padStart(3,'0')}</span></td>
+      <td style="font-size:.7rem;color:var(--text)">${s.filename}</td>
+      <td><span class="chip ch-g">${s.duration_s}s</span></td>
+      <td><audio controls style="width:160px;height:26px;filter:invert(1) hue-rotate(200deg) saturate(.8)"><source src="${s.url}" type="audio/wav"></audio></td>
+      <td><a href="${s.url}" download="${s.filename}">↓ WAV</a></td>
+    `;
+    body.appendChild(tr);
+  });
+  document.getElementById('segOut').style.display='block';
+  document.getElementById('segDivLabel').textContent=`${count} SEGMENT(S) DÉTECTÉ(S)`;
+}
+</script>
+{% endblock %}
