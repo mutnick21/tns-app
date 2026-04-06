@@ -1,10 +1,6 @@
-# TNS Mini-Projet – Numérisation, Segmentation & Filtrage Vocal
-**ESP/UCAD – DIC 2 Génie Informatique – 2025–2026**  
-*Dr. Moustapha MBAYE*
 
----
 
-## 🏗️ Architecture
+🏗️ Architecture
 
 ```
 tns_app/
