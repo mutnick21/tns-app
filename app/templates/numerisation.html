@@ -4,12 +4,16 @@
 
 <!-- ── Hero ── -->
 <div class="hero">
-  <div>
-    <div class="hero-eyebrow">module_01 · numérisation vocale</div>
-    <h1>Capture &amp; <em>Segmentation</em></h1>
-    <p>Enregistrement microphone avec paramètres de numérisation contrôlés, sauvegarde WAV structurée et découpage automatique par détection de silence.</p>
+  <div class="hero-bg-num">01</div>
+  <canvas class="hero-wave"></canvas>
+  <div style="position:relative;z-index:1">
+    <div class="hero-eyebrow">
+      <span class="ey-dot"></span>module_01<span class="ey-dot"></span>numérisation vocale
+    </div>
+    <h1>Capture &amp;<br><em>Segmentation</em></h1>
+    <p>Enregistrement microphone avec paramètres de numérisation contrôlés,<br>sauvegarde WAV structurée et découpage automatique par détection de silence.</p>
   </div>
-  <div class="hero-meta">
+  <div class="hero-meta" style="position:relative;z-index:1">
     <div class="meta-pill"><div class="meta-dot"></div>WAV · PCM uniquement</div>
     <div class="meta-pill"><div class="meta-dot"></div>16 / 22,05 / 44,1 kHz</div>
     <div class="meta-pill"><div class="meta-dot"></div>16 ou 32 bits</div>
@@ -296,10 +300,10 @@ function drawOsc(){
   const W=canvas.width=canvas.offsetWidth, H=canvas.height=canvas.offsetHeight;
   ctx2d.clearRect(0,0,W,H);
   // Ligne centrale
-  ctx2d.strokeStyle='rgba(13,240,212,0.1)';ctx2d.lineWidth=1;
+  ctx2d.strokeStyle='rgba(167,139,255,0.12)';ctx2d.lineWidth=1;
   ctx2d.beginPath();ctx2d.moveTo(0,H/2);ctx2d.lineTo(W,H/2);ctx2d.stroke();
   // Forme d'onde
-  ctx2d.strokeStyle='#0df0d4';ctx2d.lineWidth=1.5;ctx2d.beginPath();
+  ctx2d.strokeStyle='#a78bff';ctx2d.lineWidth=1.5;ctx2d.beginPath();
   const sw=W/buf.length;let x=0;
   for(let i=0;i<buf.length;i++){
     const y=(buf[i]/128)*H/2;

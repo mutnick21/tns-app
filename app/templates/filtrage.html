@@ -4,12 +4,16 @@
 
 <!-- ── Hero ── -->
 <div class="hero">
-  <div>
-    <div class="hero-eyebrow">module_02 · analyse fréquentielle</div>
-    <h1>FFT &amp; <em>Filtrage Rectangulaire</em></h1>
-    <p>Chargement audio multi-format avec conversion automatique en WAV, analyse spectrale par Transformée de Fourier Rapide, filtrage par masque rectangulaire H(f) et reconstruction IFFT.</p>
+  <div class="hero-bg-num">02</div>
+  <canvas class="hero-wave"></canvas>
+  <div style="position:relative;z-index:1">
+    <div class="hero-eyebrow">
+      <span class="ey-dot"></span>module_02<span class="ey-dot"></span>analyse fréquentielle
+    </div>
+    <h1>FFT &amp; <em>Filtrage<br>Rectangulaire</em></h1>
+    <p>Chargement audio multi-format avec conversion automatique en WAV,<br>analyse spectrale FFT, filtrage H(f) et reconstruction IFFT.</p>
   </div>
-  <div class="hero-meta">
+  <div class="hero-meta" style="position:relative;z-index:1">
     <div class="meta-pill"><div class="meta-dot"></div>scipy.fft · FFT/IFFT</div>
     <div class="meta-pill"><div class="meta-dot"></div>Masque rectangulaire uniquement</div>
     <div class="meta-pill"><div class="meta-dot"></div>Export WAV 16 bits</div>
@@ -290,33 +294,33 @@ function drawMask(){
 
   if(type==='passband'){
     // zones rejetées
-    cx.fillStyle='rgba(255,71,87,0.12)'; cx.fillRect(0,0,x1,H); cx.fillRect(x2,0,W-x2,H);
+    cx.fillStyle='rgba(255,58,138,0.12)'; cx.fillRect(0,0,x1,H); cx.fillRect(x2,0,W-x2,H);
     // zone active
-    cx.fillStyle='rgba(13,240,212,0.18)'; cx.fillRect(x1,0,x2-x1,H);
+    cx.fillStyle='rgba(167,139,255,0.18)'; cx.fillRect(x1,0,x2-x1,H);
     // ligne H=1
-    cx.strokeStyle='rgba(13,240,212,0.6)'; cx.lineWidth=1.5; cx.setLineDash([]);
+    cx.strokeStyle='rgba(167,139,255,0.65)'; cx.lineWidth=1.5; cx.setLineDash([]);
     cx.beginPath(); cx.moveTo(x1,H*0.2); cx.lineTo(x2,H*0.2); cx.stroke();
     // lignes H=0
-    cx.strokeStyle='rgba(255,71,87,0.4)'; cx.lineWidth=1; cx.setLineDash([3,3]);
+    cx.strokeStyle='rgba(255,58,138,0.4)'; cx.lineWidth=1; cx.setLineDash([3,3]);
     cx.beginPath(); cx.moveTo(0,H*0.2); cx.lineTo(x1,H*0.2); cx.stroke();
     cx.beginPath(); cx.moveTo(x2,H*0.2); cx.lineTo(W,H*0.2); cx.stroke();
   } else {
-    cx.fillStyle='rgba(13,240,212,0.12)'; cx.fillRect(0,0,x1,H); cx.fillRect(x2,0,W-x2,H);
-    cx.fillStyle='rgba(255,71,87,0.18)'; cx.fillRect(x1,0,x2-x1,H);
-    cx.strokeStyle='rgba(13,240,212,0.5)'; cx.lineWidth=1.5; cx.setLineDash([]);
+    cx.fillStyle='rgba(167,139,255,0.12)'; cx.fillRect(0,0,x1,H); cx.fillRect(x2,0,W-x2,H);
+    cx.fillStyle='rgba(255,58,138,0.18)'; cx.fillRect(x1,0,x2-x1,H);
+    cx.strokeStyle='rgba(167,139,255,0.55)'; cx.lineWidth=1.5; cx.setLineDash([]);
     cx.beginPath(); cx.moveTo(0,H*0.2); cx.lineTo(x1,H*0.2); cx.stroke();
     cx.beginPath(); cx.moveTo(x2,H*0.2); cx.lineTo(W,H*0.2); cx.stroke();
-    cx.strokeStyle='rgba(255,71,87,0.5)'; cx.lineWidth=1; cx.setLineDash([3,3]);
+    cx.strokeStyle='rgba(255,58,138,0.5)'; cx.lineWidth=1; cx.setLineDash([3,3]);
     cx.beginPath(); cx.moveTo(x1,H*0.2); cx.lineTo(x2,H*0.2); cx.stroke();
   }
   // Bords verticaux
-  const lc=type==='passband'?'#0df0d4':'#ff4757';
+  const lc=type==='passband'?'#a78bff':'#ff3a8a';
   cx.strokeStyle=lc; cx.lineWidth=1.5; cx.setLineDash([4,3]);
   cx.beginPath(); cx.moveTo(x1,0); cx.lineTo(x1,H); cx.stroke();
   cx.beginPath(); cx.moveTo(x2,0); cx.lineTo(x2,H); cx.stroke();
   // Labels
   cx.setLineDash([]);
-  cx.font='9px JetBrains Mono, monospace'; cx.fillStyle=lc;
+  cx.font='600 9px JetBrains Mono, monospace'; cx.fillStyle=lc;
   cx.fillText(fMin+'Hz', Math.max(x1+3,2), 10);
   cx.fillText(fMax+'Hz', Math.min(x2+3,W-58), 10);
   // Annotation centrale
